@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mistral AI Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/13.0.1/markdown-it.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #10a37f;
+            --primary-hover: #0d8c6d;
+            --chat-bg: #343541;
+            --message-ai-bg: #444654;
+            --message-user-bg: #343541;
+            --text-color: #ececf1;
+            --input-bg: #40414f;
+            --border-color: #4e4e5f;
+            --error-color: #ef4146;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--chat-bg);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .api-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-connected {
+            background-color: rgba(16, 163, 127, 0.2);
+            color: #10a37f;
+        }
+
+        .status-disconnected {
+            background-color: rgba(239, 65, 70, 0.2);
+            color: var(--error-color);
+        }
+
+        .status-connected::before,
+        .status-disconnected::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-connected::before {
+            background-color: #10a37f;
+        }
+
+        .status-disconnected::before {
+            background-color: var(--error-color);
+        }
+
+        .settings-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .settings-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            display: flex;
+            padding: 20px;
+            margin-bottom: 10px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            width: 100%;
+        }
+
+        .message.user {
+            background-color: var(--message-user-bg);
+        }
+
+        .message.ai {
+            background-color: var(--message-ai-bg);
+        }
+
+        .avatar-container {
+            margin-right: 16px;
+            flex-shrink: 0;
+        }
+
+        .ai-avatar, .user-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ai-avatar {
+            background-color: var(--primary-color);
+        }
+
+        .user-avatar {
+            background-color: #9e5cf2;
+        }
+
+        .message-content {
+            flex: 1;
+        }
+
+        .markdown-content {
+            line-height: 1.6;
+        }
+
+        .markdown-content p {
+            margin-bottom: 12px;
+        }
+
+        .chat-input-container {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-input-box {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--input-bg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message-input {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            padding: 16px;
+            resize: none;
+            outline: none;
+            width: 100%;
+            font-family: inherit;
+            font-size: 16px;
+            line-height: 1.5;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .input-actions {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .send-btn {
+            margin-left: auto;
+            background-color: var(--primary-color);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .send-btn:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+        }
+
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 350px;
+            background-color: var(--chat-bg);
+            border-left: 1px solid var(--border-color);
+            padding: 20px;
+            overflow-y: auto;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .settings-panel.active {
+            transform: translateX(0);
+        }
+
+        .settings-panel h2 {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .settings-group {
+            margin-bottom: 24px;
+        }
+
+        .settings-group h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .settings-input {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-color);
+            margin-bottom: 12px;
+        }
+
+        .settings-btn-primary {
+            padding: 10px 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .settings-btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .code-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 5px 10px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            margin-bottom: -10px;
+        }
+
+        .code-block-header span {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .copy-code-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 3px 6px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+
+        .copy-code-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .code-block {
+            margin: 0;
+            padding: 0;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 99;
+            display: none;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        .humanize-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-color);
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 180px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -90px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .humanize-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: #10a37f;
+            margin-left: 8px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-header">
+        <div class="api-status status-disconnected" id="apiStatus">Disconnected</div>
+        <h2>Mistral AI Assistant</h2>
+        <div class="humanize-toggle tooltip" id="humanizeToggle">
+            <span>Humanize</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="humanizeCheckbox">
+                <span class="slider"></span>
+            </label>
+            <span class="tooltiptext">Make AI responses sound more human and natural</span>
+        </div>
+        <button class="settings-btn" onclick="toggleSettings()">
+            <i class="fas fa-cog"></i> Settings
+        </button>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        <div class="message ai">
+            <div class="avatar-container">
+                <div class="ai-avatar"><i class="fas fa-robot"></i></div>
+            </div>
+            <div class="message-content">
+                <div class="markdown-content">
+                    Hello! I'm your Mistral AI assistant. Configure your API settings to get started.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-input-container">
+        <div class="chat-input-box">
+            <textarea 
+                class="message-input" 
+                id="messageInput" 
+                placeholder="Message Mistral..." 
+                rows="1"
+            ></textarea>
+            <div class="input-actions">
+                <button class="send-btn" id="sendButton" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="toggleSettings()"></div>
+
+    <div class="settings-panel" id="settingsPanel">
+        <h2>API Settings</h2>
+        
+        <div class="settings-group">
+            <h3>Connection</h3>
+            <input type="text" class="settings-input" id="apiUrl" placeholder="API URL" value="http://localhost:5010">
+            <input type="text" class="settings-input" id="apiKey" placeholder="API Key">
+            <button class="settings-btn-primary" onclick="testConnection()">Test Connection</button>
+        </div>
+        
+        <div class="settings-group">
+            <h3>Model Parameters</h3>
+            <label for="temperature">Temperature: <span id="tempValue">0.7</span></label>
+            <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7" class="settings-input">
+            
+            <label for="maxTokens">Max Tokens: <span id="tokensValue">1024</span></label>
+            <input type="range" id="maxTokens" min="256" max="4096" step="256" value="1024" class="settings-input">
+        </div>
+        
+        <div class="settings-group">
+            <button class="settings-btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize markdown parser
+        const md = window.markdownit({
+            html: true,
+            linkify: true,
+            typographer: true,
+            highlight: function (str, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return '<div class="code-block-header">' +
+                               `<span>${lang}</span>` +
+                               '<button class="copy-code-btn" onclick="copyCode(this)">Copy</button>' +
+                               '</div>' +
+                               '<pre class="code-block"><code class="hljs">' +
+                               hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+                               '</code></pre>';
+                    } catch (__) {}
+                }
+                return '<div class="code-block-header">' +
+                       '<span>text</span>' +
+                       '<button class="copy-code-btn" onclick="copyCode(this)">Copy</button>' +
+                       '</div>' +
+                       '<pre class="code-block"><code class="hljs">' +
+                       md.utils.escapeHtml(str) +
+                       '</code></pre>';
+            }
+        });
+
+        // DOM elements
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const apiUrlInput = document.getElementById('apiUrl');
+        const apiKeyInput = document.getElementById('apiKey');
+        const apiStatus = document.getElementById('apiStatus');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const overlay = document.getElementById('overlay');
+        const temperatureSlider = document.getElementById('temperature');
+        const maxTokensSlider = document.getElementById('maxTokens');
+        const tempValue = document.getElementById('tempValue');
+        const tokensValue = document.getElementById('tokensValue');
+        const humanizeCheckbox = document.getElementById('humanizeCheckbox');
+        
+        // State variables
+        let isConnected = false;
+        let currentConversation = [];
+        let isHumanizeEnabled = false;
+        
+        // Event listeners
+        messageInput.addEventListener('input', autoResizeTextarea);
+        messageInput.addEventListener('keydown', handleKeydown);
+        temperatureSlider.addEventListener('input', () => {
+            tempValue.textContent = temperatureSlider.value;
+        });
+        maxTokensSlider.addEventListener('input', () => {
+            tokensValue.textContent = maxTokensSlider.value;
+        });
+        humanizeCheckbox.addEventListener('change', () => {
+            isHumanizeEnabled = humanizeCheckbox.checked;
+            saveSettings();
+        });
+        
+        // Initialize the app
+        function init() {
+            loadSettings();
+            messageInput.focus();
+        }
+        
+        // Toggle settings panel
+        function toggleSettings() {
+            settingsPanel.classList.toggle('active');
+            overlay.classList.toggle('active');
+        }
+        
+        // Auto-resize textarea
+        function autoResizeTextarea() {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = (messageInput.scrollHeight) + 'px';
+        }
+        
+        // Handle keyboard events
+        function handleKeydown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        // Send message function
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+            
+            // Clear input and reset height
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            
+            // Add user message
+            const userMessageId = 'msg-' + Date.now();
+            addMessage(message, 'user', userMessageId);
+            
+            // Add to conversation history
+            currentConversation.push({
+                role: 'user',
+                content: message,
+                id: userMessageId
+            });
+            
+            // Show thinking indicator
+            const thinkingId = 'thinking-' + Date.now();
+            addThinkingIndicator(thinkingId);
+            
+            // Send to API
+            sendToAPI(message, thinkingId);
+        }
+        
+        // Add message to chat
+        function addMessage(content, role, id) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.id = id;
+            messageDiv.style.animation = 'fadeIn 0.3s ease';
+            
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'avatar-container';
+            
+            const avatar = document.createElement('div');
+            avatar.className = role === 'user' ? 'user-avatar' : 'ai-avatar';
+            avatar.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+            
+            avatarDiv.appendChild(avatar);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            if (role === 'user') {
+                contentDiv.textContent = content;
+            } else {
+                contentDiv.innerHTML = md.render(content);
+                
+                // Re-initialize highlight.js for code blocks
+                setTimeout(() => {
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                }, 0);
+            }
+            
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Add thinking indicator
+        function addThinkingIndicator(id) {
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'message ai';
+            thinkingDiv.id = id;
+            
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'avatar-container';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'ai-avatar';
+            avatar.innerHTML = '<i class="fas fa-robot"></i>';
+            
+            avatarDiv.appendChild(avatar);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = '<div><i class="fas fa-circle-notch fa-spin"></i> Thinking...</div>';
+            
+            thinkingDiv.appendChild(avatarDiv);
+            thinkingDiv.appendChild(contentDiv);
+            chatMessages.appendChild(thinkingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Remove thinking indicator
+        function removeThinkingIndicator(id) {
+            const thinkingElement = document.getElementById(id);
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+        }
+        
+        // Send message to API
+        function sendToAPI(message, thinkingId) {
+            const apiUrl = apiUrlInput.value;
+            const apiKey = apiKeyInput.value;
+            
+            if (!apiUrl) {
+                removeThinkingIndicator(thinkingId);
+                addMessage('Please configure the API URL in settings.', 'ai', 'error-' + Date.now());
+                return;
+            }
+            
+            const requestBody = {
+                model: "mistral-7b-instruct",
+                messages: [...currentConversation],
+                temperature: parseFloat(temperatureSlider.value),
+                max_tokens: parseInt(maxTokensSlider.value)
+            };
+            
+            fetch(`${apiUrl}/v1/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                removeThinkingIndicator(thinkingId);
+                
+                if (data.choices && data.choices.length > 0) {
+                    let aiResponse = data.choices[0].message.content;
+                    
+                    // If humanize is enabled, send the response to the plag endpoint
+                    if (isHumanizeEnabled) {
+                        humanizeResponse(aiResponse, thinkingId);
+                    } else {
+                        const aiMessageId = 'msg-' + Date.now();
+                        addMessage(aiResponse, 'ai', aiMessageId);
+                        
+                        // Add to conversation history
+                        currentConversation.push({
+                            role: 'assistant',
+                            content: aiResponse,
+                            id: aiMessageId
+                        });
+                        
+                        // Update connection status
+                        updateConnectionStatus(true);
+                    }
+                } else {
+                    addMessage('No response from AI. Please check your API configuration.', 'ai', 'error-' + Date.now());
+                }
+            })
+            .catch(error => {
+                removeThinkingIndicator(thinkingId);
+                addMessage(`Error: ${error.message}`, 'ai', 'error-' + Date.now());
+                updateConnectionStatus(false);
+                console.error('API Error:', error);
+            });
+        }
+        
+        // Humanize the AI response
+        function humanizeResponse(aiResponse, thinkingId) {
+            const apiUrl = apiUrlInput.value;
+            const apiKey = apiKeyInput.value;
+            
+            // Show humanizing indicator
+            const humanizingId = 'humanizing-' + Date.now();
+            addHumanizingIndicator(humanizingId);
+            
+            fetch(`${apiUrl}/v1/plag`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({ text: aiResponse })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Humanize API error: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                removeThinkingIndicator(thinkingId);
+                removeHumanizingIndicator(humanizingId);
+                
+                if (data.humanized_text) {
+                    const aiMessageId = 'msg-' + Date.now();
+                    addMessage(data.humanized_text, 'ai', aiMessageId);
+                    
+                    // Add indicator that this response was humanized
+                    const humanizeIndicator = document.createElement('span');
+                    humanizeIndicator.className = 'humanize-indicator';
+                    humanizeIndicator.innerHTML = '<i class="fas fa-user-circle"></i> Humanized';
+                    
+                    const messageDiv = document.getElementById(aiMessageId);
+                    const contentDiv = messageDiv.querySelector('.message-content');
+                    contentDiv.appendChild(humanizeIndicator);
+                    
+                    // Add to conversation history
+                    currentConversation.push({
+                        role: 'assistant',
+                        content: data.humanized_text,
+                        id: aiMessageId
+                    });
+                    
+                    // Update connection status
+                    updateConnectionStatus(true);
+                } else {
+                    addMessage('Humanization failed. Using original response.', 'ai', 'error-' + Date.now());
+                    const aiMessageId = 'msg-' + Date.now();
+                    addMessage(aiResponse, 'ai', aiMessageId);
+                    
+                    // Add to conversation history
+                    currentConversation.push({
+                        role: 'assistant',
+                        content: aiResponse,
+                        id: aiMessageId
+                    });
+                }
+            })
+            .catch(error => {
+                removeThinkingIndicator(thinkingId);
+                removeHumanizingIndicator(humanizingId);
+                addMessage(`Humanization error: ${error.message}. Using original response.`, 'ai', 'error-' + Date.now());
+                
+                const aiMessageId = 'msg-' + Date.now();
+                addMessage(aiResponse, 'ai', aiMessageId);
+                
+                // Add to conversation history
+                currentConversation.push({
+                    role: 'assistant',
+                    content: aiResponse,
+                    id: aiMessageId
+                });
+                
+                console.error('Humanize Error:', error);
+            });
+        }
+        
+        // Add humanizing indicator
+        function addHumanizingIndicator(id) {
+            const humanizingDiv = document.createElement('div');
+            humanizingDiv.className = 'message ai';
+            humanizingDiv.id = id;
+            
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'avatar-container';
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'ai-avatar';
+            avatar.innerHTML = '<i class="fas fa-robot"></i>';
+            
+            avatarDiv.appendChild(avatar);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = '<div><i class="fas fa-magic"></i> Humanizing response...</div>';
+            
+            humanizingDiv.appendChild(avatarDiv);
+            humanizingDiv.appendChild(contentDiv);
+            chatMessages.appendChild(humanizingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Remove humanizing indicator
+        function removeHumanizingIndicator(id) {
+            const humanizingElement = document.getElementById(id);
+            if (humanizingElement) {
+                humanizingElement.remove();
+            }
+        }
+        
+        // Test API connection
+        function testConnection() {
+            const apiUrl = apiUrlInput.value;
+            const apiKey = apiKeyInput.value;
+            
+            if (!apiUrl) {
+                alert('Please enter an API URL');
+                return;
+            }
+            
+            fetch(`${apiUrl}/v1/models`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    updateConnectionStatus(true);
+                    alert('Connection successful!');
+                } else {
+                    throw new Error(`Connection failed: ${response.status}`);
+                }
+            })
+            .catch(error => {
+                updateConnectionStatus(false);
+                alert(`Connection failed: ${error.message}`);
+            });
+        }
+        
+        // Update connection status
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            
+            if (connected) {
+                apiStatus.className = 'api-status status-connected';
+                apiStatus.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+            } else {
+                apiStatus.className = 'api-status status-disconnected';
+                apiStatus.innerHTML = '<i class="fas fa-times-circle"></i> Disconnected';
+            }
+        }
+        
+        // Copy code
+        function copyCode(button) {
+            const codeBlock = button.closest('.code-block-header').nextElementSibling;
+            const codeText = codeBlock.querySelector('code').textContent;
+            
+            navigator.clipboard.writeText(codeText).then(() => {
+                const originalHtml = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    button.innerHTML = originalHtml;
+                }, 2000);
+            });
+        }
+        
+        // Save settings to localStorage
+        function saveSettings() {
+            const settings = {
+                apiUrl: apiUrlInput.value,
+                apiKey: apiKeyInput.value,
+                temperature: temperatureSlider.value,
+                maxTokens: maxTokensSlider.value,
+                humanizeEnabled: isHumanizeEnabled
+            };
+            
+            localStorage.setItem('mistralSettings', JSON.stringify(settings));
+            alert('Settings saved!');
+            toggleSettings();
+            
+            // Test connection with new settings
+            testConnection();
+        }
+        
+        // Load settings from localStorage
+        function loadSettings() {
+            const savedSettings = localStorage.getItem('mistralSettings');
+            
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                apiUrlInput.value = settings.apiUrl || 'http://localhost:5010';
+                apiKeyInput.value = settings.apiKey || '';
+                temperatureSlider.value = settings.temperature || 0.7;
+                maxTokensSlider.value = settings.maxTokens || 1024;
+                isHumanizeEnabled = settings.humanizeEnabled || false;
+                humanizeCheckbox.checked = isHumanizeEnabled;
+                
+                tempValue.textContent = temperatureSlider.value;
+                tokensValue.textContent = maxTokensSlider.value;
+                
+                // Test connection with saved settings
+                testConnection();
+            }
+        }
+        
+        // Initialize the app
+        init();
+    </script>
+</body>
+</html>
