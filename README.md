@@ -15,8 +15,8 @@ Installation
 
 Clone the repository
 bash
-git clone <your-repo-url>
-cd namanmic_gguf-server
+git clone https://github.com/nksdev/gguf-ai_model_ai-server-
+cd gguf-ai_model_ai-server-
 Install dependencies
 bash
 pip install -r requirements.txt
