@@ -4,10 +4,10 @@ namanmic_gguf Universal Server
 A powerful, self-hosted AI server that provides OpenAI-compatible API endpoints using Mistral-7B model with advanced anti-detection capabilities.
 
 Features
-anti ai detection response 
-index.html aichatbot using this api server 
-OpenAI-Compatible API: Full compatibility with OpenAI's API structure
-Advanced Anti-Detection: Built-in StealthWriter technology to humanize AI responses
+anti ai detection response \n
+index.html aichatbot using this api server \n
+OpenAI-Compatible API: Full compatibility with OpenAI's API structure\n
+Advanced Anti-Detection: Built-in StealthWriter technology to humanize AI responses\n
 Multi-Format Support: Process PDFs, images, and text files
 Session Management: Maintain conversation context and file references
 API Key Management: Secure access control with admin capabilities
